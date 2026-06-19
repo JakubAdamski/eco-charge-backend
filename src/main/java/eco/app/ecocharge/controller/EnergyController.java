@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin(origins = "*") // <-- TA LINIJKA ROZWIĄŻE PROBLEM Z CORS
 @RestController
 @RequestMapping("/api/energy")
 @RequiredArgsConstructor
@@ -16,12 +17,10 @@ public class EnergyController {
 
     private final EnergyService energyService;
 
-
     @GetMapping("/mix")
     public ResponseEntity<List<DailyEnergyMix>> getEnergyMix() {
         return ResponseEntity.ok(energyService.getAggregatedEnergyMix());
     }
-
 
     @GetMapping("/optimal-charging")
     public ResponseEntity<ChargingWindowResponse> getOptimalCharging(@RequestParam int hours) {
