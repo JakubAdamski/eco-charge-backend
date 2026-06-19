@@ -1,7 +1,5 @@
 package eco.app.ecocharge.service;
 
-
-import eco.app.ecocharge.model.external.CarbonIntensityResponse;
 import eco.app.ecocharge.model.external.FuelMix;
 import eco.app.ecocharge.model.external.GenerationData;
 import eco.app.ecocharge.model.response.ChargingWindowResponse;
@@ -9,7 +7,7 @@ import eco.app.ecocharge.model.response.DailyEnergyMix;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
+import eco.app.ecocharge.client.ExternalEnergyClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,8 +20,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class EnergyService {
 
-    private final RestClient restClient;
-    private static final String API_URL = "https://api.carbonintensity.org.uk/generation";
+    private final ExternalEnergyClient externalEnergyClient;
 
 
     private static final Set<String> CLEAN_SOURCES = Set.of("biomass", "nuclear", "hydro", "wind", "solar");
@@ -33,7 +30,7 @@ public class EnergyService {
         LocalDate today = LocalDate.now();
         LocalDate endRange = today.plusDays(3);
 
-        List<GenerationData> rawData = fetchGenerationData(today.atStartOfDay(), endRange.atStartOfDay());
+        List<GenerationData> rawData = externalEnergyClient.getGenerationData(today.atStartOfDay(), endRange.atStartOfDay());
 
         Map<LocalDate, List<GenerationData>> groupedByDay = rawData.stream()
                 .collect(Collectors.groupingBy(d -> LocalDateTime.parse(d.getFromDate(), DateTimeFormatter.ISO_DATE_TIME).toLocalDate()));
@@ -59,11 +56,11 @@ public class EnergyService {
         LocalDateTime start = LocalDateTime.now();
         LocalDateTime end = start.plusDays(2);
 
-        List<GenerationData> intervals = fetchGenerationData(start, end);
+        List<GenerationData> intervals = externalEnergyClient.getGenerationData(start, end);
 
         int intervalsNeeded = durationHours * 2;
 
-        if (intervals.size() < intervalsNeeded) {
+        if (intervals == null || intervals.size() < intervalsNeeded) {
             throw new IllegalStateException("Not enough data to calculate window.");
         }
 
@@ -89,19 +86,6 @@ public class EnergyService {
                 .build();
     }
 
-    private List<GenerationData> fetchGenerationData(LocalDateTime from, LocalDateTime to) {
-        String fromStr = from.format(DateTimeFormatter.ISO_DATE_TIME);
-        String toStr = to.format(DateTimeFormatter.ISO_DATE_TIME);
-
-        log.info("Fetching data from {} to {}", fromStr, toStr);
-
-        CarbonIntensityResponse response = restClient.get()
-                .uri(API_URL + "/" + fromStr + "/" + toStr)
-                .retrieve()
-                .body(CarbonIntensityResponse.class);
-
-        return response != null ? response.getData() : Collections.emptyList();
-    }
 
     private DailyEnergyMix calculateDailyAverage(LocalDate date, List<GenerationData> intervals) {
         Map<String, Double> sumFuel = new HashMap<>();

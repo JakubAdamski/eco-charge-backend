@@ -1,5 +1,6 @@
 package eco.app.ecocharge.service;
 
+import eco.app.ecocharge.client.ExternalEnergyClient;
 import eco.app.ecocharge.model.external.CarbonIntensityResponse;
 import eco.app.ecocharge.model.external.FuelMix;
 import eco.app.ecocharge.model.external.GenerationData;
@@ -11,38 +12,25 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.client.RestClient;
 import static org.mockito.Mockito.lenient;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EnergyServiceTest {
 
     @Mock
-    private RestClient restClient;
+    private ExternalEnergyClient externalEnergyClient;
 
     @InjectMocks
     private EnergyService energyService;
 
-
-    @Mock
-    private RestClient.RequestHeadersUriSpec requestHeadersUriSpec;
-    @Mock
-    private RestClient.RequestHeadersSpec requestHeadersSpec;
-    @Mock
-    private RestClient.ResponseSpec responseSpec;
-
     @BeforeEach
     void setUp() {
-
-        lenient().when(restClient.get()).thenReturn(requestHeadersUriSpec);
-        lenient().when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        lenient().when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     }
 
     @Test
@@ -52,7 +40,7 @@ class EnergyServiceTest {
         setHighCleanEnergy(mockResponse.getData().get(3));
         setHighCleanEnergy(mockResponse.getData().get(4));
 
-        when(responseSpec.body(CarbonIntensityResponse.class)).thenReturn(mockResponse);
+        when(externalEnergyClient.getGenerationData(any(), any())).thenReturn(mockResponse.getData());
 
         ChargingWindowResponse result = energyService.findOptimalChargingWindow(1);
 
@@ -73,7 +61,7 @@ class EnergyServiceTest {
         CarbonIntensityResponse mockResponse = new CarbonIntensityResponse();
         mockResponse.setData(createMockData(150));
 
-        when(responseSpec.body(CarbonIntensityResponse.class)).thenReturn(mockResponse);
+        when(externalEnergyClient.getGenerationData(any(), any())).thenReturn(mockResponse.getData());
 
         List<DailyEnergyMix> result = energyService.getAggregatedEnergyMix();
 
